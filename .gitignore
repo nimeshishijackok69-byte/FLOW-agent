@@ -26,4 +26,7 @@ dist-ssr
 .vercel
 .env
 .env.*
-!.env.example
+uploads/
+*.png
+*.webp
+*.jpg
