@@ -1,0 +1,127 @@
+import React, { useState, useEffect } from 'react';
+import { User } from '../lib/auth';
+import { api } from '../lib/api';
+import StatCard from '../components/StatCard';
+import StatusBadge from '../components/StatusBadge';
+import { motion } from 'framer-motion';
+import { Users, FileText, Inbox, CheckSquare, BarChart3, Clock, TrendingUp, AlertTriangle, Activity, Award, UserPlus, Layers } from 'lucide-react';
+
+export default function Dashboard({ user }: { user: User }) {
+  const [stats, setStats] = useState<any>(null);
+  const [recentSubs, setRecentSubs] = useState<any[]>([]);
+  const [recentLogs, setRecentLogs] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    Promise.all([api.get('/stats'), api.get('/submissions'), api.get('/audit-logs?limit=10')])
+      .then(([s, subs, logs]) => { setStats(s); setRecentSubs(Array.isArray(subs) ? subs.slice(0, 6) : []); setRecentLogs(Array.isArray(logs) ? logs.slice(0, 10) : []); })
+      .catch(console.error).finally(() => setLoading(false));
+  }, []);
+
+  if (loading) return <div className="flex items-center justify-center h-64"><div className="w-8 h-8 border-[3px] border-primary border-t-transparent rounded-full animate-spin" /></div>;
+  const s = stats || {};
+  const anim = (i: number) => ({ initial: { opacity: 0, y: 20 }, animate: { opacity: 1, y: 0 }, transition: { delay: i * 0.05, duration: 0.4 } });
+
+  return (
+    <div className="space-y-6">
+      <div><h1 className="text-2xl font-bold font-heading">Welcome back, {user.name?.split(' ')[0]}</h1>
+        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">{user.role === 'admin' ? 'System overview and real-time analytics' : user.role === 'functionary' ? `Managing nominations for school ${user.school_code || ''}` : 'Your portal overview'}</p></div>
+
+      <motion.div {...anim(0)} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {user.role === 'admin' && <>
+          <StatCard label="Total Users" value={s.totalUsers || 0} icon={Users} color="blue" trend="+12% this month" trendUp />
+          <StatCard label="Active Forms" value={s.activeForms || 0} icon={FileText} color="green" subtitle={`${s.draftForms || 0} drafts, ${s.expiredForms || 0} expired`} />
+          <StatCard label="Submissions" value={s.totalSubmissions || 0} icon={Inbox} color="purple" trend="+8% this week" trendUp />
+          <StatCard label="Pending Reviews" value={s.pendingReviews || 0} icon={CheckSquare} color="amber" subtitle={`${s.completedReviews || 0} completed`} />
+        </>}
+        {user.role === 'reviewer' && <>
+          <StatCard label="Pending Reviews" value={s.pendingReviews || 0} icon={CheckSquare} color="amber" />
+          <StatCard label="Completed" value={s.completedReviews || 0} icon={TrendingUp} color="green" />
+          <StatCard label="Avg Score Given" value={s.avgScore || 0} icon={BarChart3} color="blue" subtitle="Across all reviews" />
+          <StatCard label="Total Submissions" value={s.totalSubmissions || 0} icon={Inbox} color="purple" />
+        </>}
+        {user.role === 'functionary' && <>
+          <StatCard label="Active Forms" value={s.activeForms || 0} icon={FileText} color="blue" />
+          <StatCard label="Nominations" value={s.totalNominations || 0} icon={UserPlus} color="green" subtitle={`${s.nominationsByStatus?.completed || 0} completed`} />
+          <StatCard label="Completion Rate" value={`${s.completionRate || 0}%`} icon={TrendingUp} color="purple" />
+          <StatCard label="Pending" value={s.nominationsByStatus?.invited || 0} icon={Clock} color="amber" />
+        </>}
+        {user.role === 'teacher' && <>
+          <StatCard label="Available Forms" value={s.activeForms || 0} icon={FileText} color="blue" />
+          <StatCard label="My Submissions" value={s.totalSubmissions || 0} icon={Inbox} color="green" />
+          <StatCard label="Approved" value={s.submissionsByStatus?.approved || 0} icon={CheckSquare} color="purple" />
+          <StatCard label="Under Review" value={s.submissionsByStatus?.under_review || 0} icon={Clock} color="amber" />
+        </>}
+      </motion.div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <motion.div {...anim(1)} className="lg:col-span-2 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm">
+          <div className="px-5 py-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
+            <h3 className="font-semibold font-heading text-sm">Recent Submissions</h3>
+            <span className="text-[10px] text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-900 px-2 py-0.5 rounded-full">{recentSubs.length} latest</span>
+          </div>
+          <div className="divide-y divide-border/50">
+            {recentSubs.length === 0 ? <div className="p-10 text-center text-sm text-slate-500 dark:text-slate-400">No submissions yet</div> : recentSubs.map(sub => (
+              <div key={sub.id} className="px-5 py-3 flex items-center gap-3 hover:bg-slate-100 dark:bg-slate-900/50 transition-colors">
+                <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-bold">{(sub.user_name || 'U').charAt(0)}</div>
+                <div className="flex-1 min-w-0"><p className="text-sm font-medium truncate">{sub.form_title || `Form #${sub.form_id}`}</p><p className="text-[11px] text-slate-500 dark:text-slate-400">{sub.user_name || sub.user_email || 'Anonymous'}</p></div>
+                <StatusBadge status={sub.status} />
+                {sub.score != null && <span className="text-xs font-bold text-primary">{sub.score}%</span>}
+                <span className="text-[10px] text-slate-500 dark:text-slate-400 hidden sm:block">{sub.submitted_at ? new Date(sub.submitted_at).toLocaleDateString() : ''}</span>
+              </div>
+            ))}
+          </div>
+        </motion.div>
+
+        <motion.div {...anim(2)} className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm">
+          <div className="px-5 py-4 border-b border-slate-200 dark:border-slate-700"><h3 className="font-semibold font-heading text-sm flex items-center gap-2"><Activity size={14} className="text-accent-green" /> Activity Timeline</h3></div>
+          <div className="p-4 space-y-3 max-h-80 overflow-y-auto">
+            {recentLogs.length === 0 ? <p className="text-center text-sm text-slate-500 dark:text-slate-400 py-6">No activity yet</p> : recentLogs.map(log => (
+              <div key={log.id} className="flex gap-3">
+                <div className="w-2 h-2 rounded-full bg-primary mt-1.5 flex-shrink-0" />
+                <div><p className="text-xs font-medium capitalize">{log.action?.replace(/_/g, ' ')}</p>
+                  <p className="text-[10px] text-slate-500 dark:text-slate-400">{log.created_at ? new Date(log.created_at).toLocaleString() : ''}</p>
+                  {log.details && (() => { 
+                    try { 
+                      const d = typeof log.details === 'string' ? JSON.parse(log.details) : log.details; 
+                      return d.ip ? <p className="text-[9px] text-slate-500 dark:text-slate-400/60">IP: {d.ip}</p> : null; 
+                    } catch { return null; } 
+                  })()}
+                </div>
+              </div>
+            ))}
+          </div>
+        </motion.div>
+      </div>
+
+      {user.role === 'admin' && stats && (
+        <motion.div {...anim(3)} className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5 shadow-sm">
+            <h3 className="font-semibold font-heading text-sm mb-4">Submission Status</h3>
+            <div className="space-y-3">
+              {[{ label: 'Submitted', value: s.submissionsByStatus?.submitted || 0, color: 'bg-blue-500' },
+                { label: 'Under Review', value: s.submissionsByStatus?.under_review || 0, color: 'bg-indigo-500' },
+                { label: 'Approved', value: s.submissionsByStatus?.approved || 0, color: 'bg-emerald-500' },
+                { label: 'Rejected', value: s.submissionsByStatus?.rejected || 0, color: 'bg-red-500' }]
+                .map(st => { const total = Math.max(s.totalSubmissions || 1, 1); return (
+                  <div key={st.label}><div className="flex justify-between text-xs mb-1"><span className="font-medium">{st.label}</span><span className="text-slate-500 dark:text-slate-400">{st.value} ({Math.round(st.value / total * 100)}%)</span></div>
+                    <div className="h-2 bg-slate-100 dark:bg-slate-900 rounded-full overflow-hidden"><motion.div initial={{ width: 0 }} animate={{ width: `${(st.value / total) * 100}%` }} transition={{ delay: 0.3, duration: 0.8 }} className={`h-full rounded-full ${st.color}`} /></div>
+                  </div>
+                ); })}
+            </div>
+          </div>
+          <div className="bg-card rounded-2xl border border-border p-5 shadow-sm">
+            <h3 className="font-semibold font-heading text-sm mb-4">Users by Role</h3>
+            <div className="grid grid-cols-2 gap-3">
+              {[{ role: 'Admin', count: s.usersByRole?.admin || 0, color: 'from-accent-blue/80 to-accent-blue', plural: 'Admins' },
+                { role: 'Reviewer', count: s.usersByRole?.reviewer || 0, color: 'from-accent-purple/80 to-accent-purple', plural: 'Reviewers' },
+                { role: 'Functionary', count: s.usersByRole?.functionary || 0, color: 'from-success/80 to-success', plural: 'Functionaries' },
+                { role: 'Teacher', count: s.usersByRole?.teacher || 0, color: 'from-accent-orange/80 to-accent-orange', plural: 'Teachers' }]
+                .map(r => <div key={r.role} className={`bg-gradient-to-br ${r.color} text-white rounded-xl p-4 text-center shadow-md`}><p className="text-2xl font-bold">{r.count}</p><p className="text-xs opacity-80">{r.plural}</p></div>)}
+            </div>
+          </div>
+        </motion.div>
+      )}
+    </div>
+  );
+}

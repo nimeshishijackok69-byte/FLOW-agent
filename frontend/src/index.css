@@ -1,0 +1,110 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@400;500;600;700;800&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-heading: 'Poppins', system-ui, sans-serif;
+  --font-sans: 'Inter', system-ui, sans-serif;
+  --font-display: 'Poppins', 'Inter', sans-serif;
+
+  /* ── App 2 Premium Palette ── */
+  --color-surface: #f8fafc;
+  --color-card: #ffffff;
+  --color-fg: #0f172a;
+  --color-muted: #64748b;
+  --color-border: #e2e8f0;
+  --color-primary: #5e5ce6;
+  --color-primary-hover: #4e4cb6;
+  --color-sidebar: #1e1b4b;
+  --color-sidebar-light: #4338ca;
+  --color-accent-purple: #8b5cf6;
+  --color-accent-blue: #3b82f6;
+  --color-accent-red: #ef4444;
+  --color-accent-orange: #f59e0b;
+  --color-success: #10b981;
+  --color-accent-green: #22c55e; /* Vibrant Green 500 */
+  --color-accent-green-hover: #16a34a; /* Green 600 */
+  --color-danger: #ef4444;
+  --color-warning: #f59e0b;
+
+  /* ── App 1 RAJU Token Mirror ── */
+  --color-ink: #0b1d3a;
+  --color-ink-soft: #1b2e52;
+  --color-navy: #102a5c;
+  --color-navy-deep: #081a42;
+  --color-blue: #2563eb;
+  --color-blue-soft: #eff4ff;
+  --color-sky: #e8f1ff;
+  --color-mint: #10b981;
+  --color-mint-soft: #ecfdf5;
+  --color-amber: #f59e0b;
+  --color-rose: #ef4444;
+  --color-canvas: #f6f9ff;
+}
+
+@layer base {
+  html, body, #root {
+    height: 100%;
+    background: var(--color-surface);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+}
+
+/* ── App 1 Utility Classes (used by FormBuilder + FormFill) ── */
+.font-display { font-family: var(--font-display); letter-spacing: -0.02em; }
+
+.card {
+  background: #fff;
+  border: 1px solid var(--color-border);
+  border-radius: 18px;
+  box-shadow: 0 1px 2px rgba(16,42,92,.04), 0 12px 32px -20px rgba(16,42,92,.18);
+  padding: 20px;
+}
+
+.btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 10px 16px; border-radius: 12px; font-weight: 600; font-size: 14px;
+  transition: all .15s ease; border: 1px solid transparent; cursor: pointer;
+  white-space: nowrap;
+}
+.btn-primary { background: var(--color-navy); color: #fff; }
+.btn-primary:hover { background: var(--color-navy-deep); }
+.btn-accent { background: var(--color-mint); color: #fff; }
+.btn-accent:hover { background: #059669; }
+.btn-ghost { background: transparent; color: var(--color-navy); border-color: var(--color-border); }
+.btn-ghost:hover { background: var(--color-blue-soft); border-color: #c9d6ee; }
+.btn-danger { background: #fff; color: var(--color-rose); border-color: #fecaca; }
+.btn-danger:hover { background: #fef2f2; }
+
+.input, .select, .textarea {
+  width: 100%; padding: 10px 12px; border-radius: 10px;
+  border: 1px solid var(--color-border); background: #fff;
+  font: inherit; color: var(--color-ink); outline: none; transition: border-color .15s, box-shadow .15s;
+}
+.input:focus, .select:focus, .textarea:focus {
+  border-color: var(--color-blue);
+  box-shadow: 0 0 0 4px rgba(37,99,235,.12);
+}
+
+.badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 3px 9px; border-radius: 999px; font-size: 11.5px; font-weight: 600;
+  border: 1px solid transparent; letter-spacing: .01em;
+}
+.badge-blue  { background: #eff4ff; color: #1d4ed8; border-color: #dbe6ff; }
+.badge-green { background: #ecfdf5; color: #047857; border-color: #c7f0dc; }
+.badge-amber { background: #fffbeb; color: #b45309; border-color: #fde9b4; }
+.badge-rose  { background: #fef2f2; color: #b91c1c; border-color: #fecaca; }
+.badge-slate { background: #f1f5f9; color: #475569; border-color: #e2e8f0; }
+
+::-webkit-scrollbar { height: 10px; width: 10px; }
+::-webkit-scrollbar-thumb { background: #d7e0f0; border-radius: 999px; }
+::-webkit-scrollbar-thumb:hover { background: #b8c5de; }
+
+.animate-in { animation: fadein .35s ease both; }
+@keyframes fadein { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
+@keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+.skeleton { background: linear-gradient(90deg, #e2e8f0 25%, #f8fafc 50%, #e2e8f0 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; }
+
