@@ -4,6 +4,7 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import cookieParser from 'cookie-parser';
 import { rateLimit } from 'express-rate-limit';
+import mongoose from 'mongoose';
 
 import authRoutes from './routes/auth.js';
 import formRoutes from './routes/forms.js';
@@ -61,7 +62,38 @@ app.use('/api/v1/settings', settingsRoutes);
 app.use('/api/v1/uploads', uploadRoutes);
 
 // Health check
-app.get('/health', (req, res) => res.status(200).json({ status: 'ok' }));
+const dbStateLabel = (readyState: number): string => {
+  if (readyState === 0) return 'disconnected';
+  if (readyState === 1) return 'connected';
+  if (readyState === 2) return 'connecting';
+  if (readyState === 3) return 'disconnecting';
+  return 'unknown';
+};
+
+app.get('/health', (req, res) => {
+  const readyState = mongoose.connection.readyState;
+  const dbConnected = readyState === 1;
+  const statusCode = dbConnected ? 200 : 503;
+
+  res.status(statusCode).json({
+    status: dbConnected ? 'ok' : 'degraded',
+    service: 'flow-agent-backend',
+    database: {
+      connected: dbConnected,
+      state: dbStateLabel(readyState)
+    },
+    uptimeSeconds: Math.floor(process.uptime())
+  });
+});
+
+app.get('/api/v1', (req, res) => {
+  res.status(200).json({
+    service: 'flow-agent-backend',
+    version: 'v1',
+    status: 'ok',
+    health: '/health'
+  });
+});
 
 // Global error handler
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
