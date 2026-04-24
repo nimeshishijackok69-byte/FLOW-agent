@@ -1,6 +1,6 @@
 import { Response } from 'express';
-import { AuthRequest } from '../middleware/auth';
-import { SystemSetting } from '../models/SystemSetting';
+import { AuthRequest } from '../middleware/auth.js';
+import { SystemSetting } from '../models/SystemSetting.js';
 
 export const getSetting = async (req: AuthRequest, res: Response) => {
   try {

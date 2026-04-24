@@ -138,7 +138,7 @@ export const getSubmissions = async (req: AuthRequest, res: Response) => {
       if (actualFormId.toString().match(/^[0-9a-fA-F]{24}$/)) {
         query.formId = actualFormId;
       } else {
-        const f = await Form.findOne({ shareableLink: actualFormId });
+        const f = await Form.findOne({ shareableLink: actualFormId as string });
         if (f) query.formId = f._id;
         else return res.status(200).json([]); // Form not found, so no submissions
       }

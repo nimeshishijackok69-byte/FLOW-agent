@@ -15,7 +15,7 @@ export const getLevels = async (req: AuthRequest, res: Response) => {
     const query: any = {};
     if (form_id) {
       if (!mongoose.Types.ObjectId.isValid(form_id as string)) {
-        const form = await Form.findOne({ shareableLink: form_id });
+        const form = await Form.findOne({ shareableLink: form_id as string });
         if (!form) return res.status(200).json([]);
         query.formId = form._id;
       } else {
@@ -60,7 +60,7 @@ export const getShortlistData = async (req: AuthRequest, res: Response) => {
       if (!sub) return res.status(404).json({ error: 'Submission not found' });
 
       const levels = await Level.find({ formId: sub.formId }).sort({ levelNumber: 1 });
-      const reviews = await Review.find({ submission_id }).sort({ level: 1 });
+      const reviews = await Review.find({ submission_id: submission_id as string }).sort({ level: 1 });
 
       const levelData = levels.map(l => {
         const levelReviews = reviews.filter(r => r.level_id.toString() === l._id.toString());
@@ -103,7 +103,7 @@ export const getShortlistData = async (req: AuthRequest, res: Response) => {
       if (!mongoose.Types.ObjectId.isValid(form_id as string)) {
         // If not a valid ObjectId, maybe it's a shareableLink? 
         // Let's try to find the form first
-        const form = await Form.findOne({ shareableLink: form_id });
+        const form = await Form.findOne({ shareableLink: form_id as string });
         if (!form) {
           // If still not found, return empty results instead of crashing
           return res.status(200).json({ submissions: [], levels: [] });
@@ -165,7 +165,7 @@ export const createShortlist = async (req: AuthRequest, res: Response) => {
 
     let actualFormId = form_id;
     if (!mongoose.Types.ObjectId.isValid(form_id)) {
-      const form = await Form.findOne({ shareableLink: form_id });
+      const form = await Form.findOne({ shareableLink: form_id as string });
       if (!form) return res.status(404).json({ error: 'Form not found' });
       actualFormId = form._id;
     }

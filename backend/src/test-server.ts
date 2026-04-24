@@ -9,11 +9,10 @@ const startTestServer = async () => {
   try {
     const mongoServer = await MongoMemoryServer.create({
       instance: {
-        launchTimeoutMS: 120000, // 2 minutes
+        launchTimeout: 120000, // 2 minutes
       },
       binary: {
-        version: '6.0.4', // Use a specific version to avoid latest resolution issues
-        skipMD5: true,
+        version: '6.0.4',
       }
     });
     const uri = mongoServer.getUri();

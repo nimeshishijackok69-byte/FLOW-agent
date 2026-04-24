@@ -20,8 +20,10 @@ export const createAuditLog = async (req: AuthRequest, res: Response) => {
       userId: req.user?._id || req.body.user_id,
       action,
       details,
-      ip: req.ip,
-      userAgent: req.headers['user-agent']
+      metadata: {
+        ip: req.ip,
+        userAgent: req.headers['user-agent']
+      }
     });
     res.status(201).json(log);
   } catch (err: any) {

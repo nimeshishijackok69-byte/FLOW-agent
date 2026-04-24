@@ -11,7 +11,7 @@ export const getForms = async (req: AuthRequest, res: Response) => {
       if (id.toString().match(/^[0-9a-fA-F]{24}$/)) {
         form = await Form.findById(id);
       } else {
-        form = await Form.findOne({ shareableLink: id });
+        form = await Form.findOne({ shareableLink: id as string });
       }
       
       if (!form) return res.status(404).json({ error: 'Form not found' });
