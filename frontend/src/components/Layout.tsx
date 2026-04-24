@@ -52,22 +52,7 @@ export default function Layout({ user, onLogout, children }: { user: User; onLog
   const location = useLocation();
   const nav = getNav(user.role);
 
-  useEffect(() => {
-    let mounted = true;
-    const loadNotifications = async () => {
-      try {
-        const data = await api.get(`/notifications?user_id=${user.id}`);
-        if (mounted) setNotifications(data || []);
-      } catch {}
-    };
-
-    loadNotifications();
-    const interval = setInterval(loadNotifications, 15000);
-    return () => {
-      mounted = false;
-      clearInterval(interval);
-    };
-  }, [user.id]);
+  useEffect(() => { api.get(`/notifications?user_id=${user.id}`).then(setNotifications).catch(() => {}); }, [user.id]);
 
   useEffect(() => {
     const interval = setInterval(() => {

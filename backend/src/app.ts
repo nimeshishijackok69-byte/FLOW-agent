@@ -21,7 +21,6 @@ import uploadRoutes from './routes/uploads.js';
 
 
 const app = express();
-app.set('trust proxy', 1);
 
 // Security Middlewares
 app.use(helmet({
@@ -40,34 +39,17 @@ app.use(express.json());
 app.use(morgan('dev'));
 
 // Rate Limiting
-const apiLimiter = rateLimit({
+const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: process.env.NODE_ENV === 'development' ? 10000 : 2000,
-  skip: (req) => req.originalUrl.startsWith('/api/v1/auth'),
+  max: process.env.NODE_ENV === 'development' ? 10000 : 100, // Relaxed for development
   message: 'Too many requests from this IP, please try again after 15 minutes'
 });
-
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: process.env.NODE_ENV === 'development' ? 10000 : 80,
-  standardHeaders: true,
-  legacyHeaders: false,
-  skipSuccessfulRequests: true,
-  keyGenerator: (req) => {
-    const email = String((req.body?.email || '')).trim().toLowerCase();
-    const forwardedFor = String(req.headers['x-forwarded-for'] || '').split(',')[0].trim();
-    const ip = forwardedFor || req.ip || 'unknown';
-    return email ? `${ip}:${email}` : ip;
-  },
-  message: 'Too many login attempts. Please wait and try again.'
-});
-
-app.use('/api', apiLimiter);
+app.use('/api', limiter);
 
 // Note: File uploads now served via Cloudinary — no local static folder needed
 
 // Routes
-app.use('/api/v1/auth', authLimiter, authRoutes);
+app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/forms', formRoutes);
 app.use('/api/v1/submissions', submissionRoutes);
 app.use('/api/v1/stats', statsRoutes);
