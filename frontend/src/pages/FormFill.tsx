@@ -24,7 +24,7 @@ type Section = {
 };
 
 type FormData = {
-  id: string; title: string; description: string; form_type: string;
+  id: string; _id?: string; title: string; description: string; form_type: string;
   form_schema?: { sections: Section[] };
   schema?: { sections: Section[] };
   settings: Record<string, unknown>;
