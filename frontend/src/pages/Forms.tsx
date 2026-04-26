@@ -10,7 +10,7 @@ import type { FormField } from '../components/FormRenderer';
 import {
   Plus, Edit2, Trash2, Copy, FileText, GitBranch, Award, HelpCircle,
   Layers, Eye, History, Play, Settings, Pencil, MoreHorizontal,
-  Clock, Search, Filter, ChevronRight, Calendar, Hash
+  Clock, Search, Filter, ChevronRight, Calendar, Hash, Check, Link2
 } from 'lucide-react';
 
 const typeIcons: Record<string, any> = { normal: FileText, nomination: Award, branching: GitBranch, quiz: HelpCircle, multi: Layers };
@@ -41,6 +41,7 @@ export default function Forms({ user }: { user: User }) {
   const [builderFields, setBuilderFields] = useState<FormField[]>([]);
   const [versions, setVersions] = useState<any[]>([]);
   const [openMenu, setOpenMenu] = useState<number | null>(null);
+  const [copiedFormId, setCopiedFormId] = useState<number | null>(null);
 
   const [form, setForm] = useState({
     title: '', description: '', form_type: 'normal', status: 'draft', expires_at: '',
@@ -361,6 +362,25 @@ export default function Forms({ user }: { user: User }) {
                       <button onClick={() => openBuilder(row)}
                         className={`${canFill ? '' : 'flex-1'} py-2.5 px-4 bg-primary/10 text-primary rounded-xl text-sm font-bold hover:bg-primary/20 transition-colors flex items-center justify-center gap-2 min-h-[44px]`}>
                         <Pencil size={14} /> {canFill ? 'Edit' : 'Edit Fields'}
+                      </button>
+                    )}
+                    {isAdmin && (
+                      <button onClick={async () => {
+                        try {
+                          await navigator.clipboard.writeText(`${window.location.origin}/fill/${row.id}`);
+                          setCopiedFormId(row.id);
+                          setTimeout(() => setCopiedFormId(null), 1500);
+                        } catch (err) {
+                          console.error('Failed to copy link', err);
+                        }
+                      }}
+                        className={`py-2.5 px-3.5 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-1.5 min-h-[44px] ${
+                          copiedFormId === row.id
+                            ? 'bg-green-100 text-green-700 border border-green-300'
+                            : 'bg-slate-100 text-slate-600 border border-slate-200 hover:bg-slate-200'
+                        }`}
+                        title="Copy Share Link">
+                        {copiedFormId === row.id ? <><Check size={14} /> <span className="text-xs">Copied!</span></> : <Link2 size={16} />}
                       </button>
                     )}
                     {!canFill && !isAdmin && (
