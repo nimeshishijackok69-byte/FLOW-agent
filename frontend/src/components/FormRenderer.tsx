@@ -321,7 +321,7 @@ export default function FormRenderer({ fields, formType, settings, initialValues
                         method: 'POST',
                         body: formData,
                         headers: {
-                          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+                          ...(localStorage.getItem('auth_token') ? { 'Authorization': `Bearer ${localStorage.getItem('auth_token')}` } : {})
                         }
                       });
                       

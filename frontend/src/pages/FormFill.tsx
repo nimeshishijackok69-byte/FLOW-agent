@@ -578,7 +578,7 @@ function FieldRenderer({ f, value, onChange, shuffle }: { f: Field; value: unkno
         method: 'POST',
         body: formData,
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+          ...(localStorage.getItem('auth_token') ? { 'Authorization': `Bearer ${localStorage.getItem('auth_token')}` } : {})
         }
       });
       if (!res.ok) {
