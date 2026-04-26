@@ -14,6 +14,7 @@ type FieldType = 'text' | 'textarea' | 'number' | 'email' | 'phone' | 'date' | '
 type Field = {
   id: string; type: FieldType; label: string; required?: boolean; placeholder?: string;
   options?: string[]; maxLength?: number; fileTypes?: string; maxSizeMB?: number;
+  allowedFormats?: string[];
   correct?: number | string; marks?: number; negative?: number;
   visibleIf?: { fieldId: string; op: 'eq' | 'neq'; value: string };
 };
@@ -542,12 +543,31 @@ function FieldRenderer({ f, value, onChange, shuffle }: { f: Field; value: unkno
   const [uploading, setUploading] = useState(false);
   const [uploadErr, setUploadErr] = useState('');
 
+  // Build the allowed formats from either allowedFormats array or fileTypes string
+  const allowedFormats: string[] = f.allowedFormats || (f.fileTypes ? f.fileTypes.split(',').map(s => s.trim().toLowerCase()).filter(Boolean) : []);
+
   const handleFileUpload = async (file: File) => {
     if (!file) return;
-    if (f.maxSizeMB && file.size > f.maxSizeMB * 1024 * 1024) {
-      setUploadErr(`File too large. Max ${f.maxSizeMB}MB allowed.`);
+
+    // Client-side file size check
+    const maxMB = f.maxSizeMB || 10;
+    if (file.size > maxMB * 1024 * 1024) {
+      setUploadErr(`File too large. Maximum size is ${maxMB} MB.`);
       return;
     }
+
+    // Client-side extension check
+    if (allowedFormats.length > 0) {
+      const ext = file.name.split('.').pop()?.toLowerCase() || '';
+      const isAllowed = allowedFormats.includes(ext) ||
+        (ext === 'jpeg' && allowedFormats.includes('jpg')) ||
+        (ext === 'jpg' && allowedFormats.includes('jpeg'));
+      if (!isAllowed) {
+        setUploadErr(`File type .${ext} is not allowed. Allowed: ${allowedFormats.join(', ').toUpperCase()}`);
+        return;
+      }
+    }
+
     setUploading(true);
     setUploadErr('');
     try {
@@ -561,12 +581,19 @@ function FieldRenderer({ f, value, onChange, shuffle }: { f: Field; value: unkno
           'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
         }
       });
-      if (!res.ok) throw new Error('Upload failed');
+      if (!res.ok) {
+        let errMsg = 'Upload failed';
+        try {
+          const errData = await res.json();
+          errMsg = errData.error || errMsg;
+        } catch { /* ignore parse error */ }
+        throw new Error(errMsg);
+      }
       const data = await res.json();
       onChange(data.url || data.filename || file.name);
-    } catch (err: any) {
+    } catch (err) {
       console.error('File upload error:', err);
-      setUploadErr(err.message || 'Upload failed. Please try again.');
+      setUploadErr((err as Error).message || 'Upload failed. Please try again.');
     } finally {
       setUploading(false);
     }
@@ -653,11 +680,16 @@ function FieldRenderer({ f, value, onChange, shuffle }: { f: Field; value: unkno
                       <>
                         <Upload className="mx-auto text-muted" size={22}/>
                         <div className="text-sm font-medium mt-2">Click or drop file</div>
-                        <div className="text-xs text-muted mt-1">{f.fileTypes ? `Types: ${f.fileTypes}` : ''} {f.maxSizeMB ? `· Max ${f.maxSizeMB}MB` : ''}</div>
+                        <div className="text-xs text-muted mt-1">{allowedFormats.length > 0 ? `Types: ${allowedFormats.join(', ').toUpperCase()}` : ''} {f.maxSizeMB ? `· Max ${f.maxSizeMB}MB` : ''}</div>
                       </>
                     )}
                     <input type="file" className="hidden" disabled={uploading}
-                      accept={f.fileTypes ? f.fileTypes.split(',').map(x => `.${x.trim()}`).join(',') : undefined}
+                      accept={allowedFormats.length > 0 ? allowedFormats.flatMap(fmt => {
+                        const lower = fmt.toLowerCase();
+                        if (lower === 'jpg') return ['.jpg', '.jpeg'];
+                        if (lower === 'jpeg') return ['.jpeg', '.jpg'];
+                        return [`.${lower}`];
+                      }).join(',') : undefined}
                       onChange={e => {
                         const file = e.target.files?.[0];
                         if (file) handleFileUpload(file);
