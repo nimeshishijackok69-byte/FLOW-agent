@@ -8,12 +8,12 @@ import FormFieldBuilder from '../components/FormFieldBuilder';
 import FormRenderer from '../components/FormRenderer';
 import type { FormField } from '../components/FormRenderer';
 import {
-  Plus, Edit2, Trash2, Copy, FileText, GitBranch, Award, HelpCircle,
+  Plus, Trash2, Copy, FileText, GitBranch, Award, HelpCircle,
   Layers, Eye, History, Play, Settings, Pencil, MoreHorizontal,
-  Clock, Search, Filter, ChevronRight, Calendar, Hash, Check, Link2
+  Clock, Search, Calendar, Hash, Check, Link2
 } from 'lucide-react';
 
-const typeIcons: Record<string, any> = { normal: FileText, nomination: Award, branching: GitBranch, quiz: HelpCircle, multi: Layers };
+const typeIcons: Record<string, React.ElementType> = { normal: FileText, nomination: Award, branching: GitBranch, quiz: HelpCircle, multi: Layers };
 const typeLabels: Record<string, string> = { normal: 'Normal Form', nomination: 'Nomination', branching: 'Branching', quiz: 'Quiz', multi: 'Multi-Form' };
 const typeColors: Record<string, { bg: string; text: string; border: string }> = {
   normal: { bg: 'bg-accent-blue/10', text: 'text-accent-blue', border: 'border-accent-blue/30' },
@@ -23,9 +23,44 @@ const typeColors: Record<string, { bg: string; text: string; border: string }> =
   multi: { bg: 'bg-accent-red/10', text: 'text-accent-red', border: 'border-accent-red/30' },
 };
 
+interface FormSettings {
+  login_type?: string;
+  review_type?: string;
+  max_nominations?: number;
+  teacher_login?: string;
+  time_limit?: number;
+  passing_score?: number;
+  negative_marking?: boolean;
+  shuffle_options?: boolean;
+  [key: string]: unknown;
+}
+
+interface VersionRecord {
+  id: number | string;
+  version: number | string;
+  created_at: string;
+  change_notes?: string;
+}
+
+export interface FormDataRecord {
+  id: number;
+  title: string;
+  description: string;
+  form_type: string;
+  status: string;
+  expires_at?: string;
+  created_at?: string;
+  createdAt?: string;
+  schema?: string | { sections?: { id?: string; title?: string; label?: string; fields?: FormField[] }[] };
+  form_schema?: string | { sections?: { id?: string; title?: string; label?: string; fields?: FormField[] }[] };
+  fields?: string | FormField[];
+  formType?: string;
+  settings?: FormSettings | string;
+  [key: string]: unknown;
+}
 export default function Forms({ user }: { user: User }) {
   const navigate = useNavigate();
-  const [forms, setForms] = useState<any[]>([]);
+  const [forms, setForms] = useState<FormDataRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
@@ -36,16 +71,16 @@ export default function Forms({ user }: { user: User }) {
   const [showFieldBuilder, setShowFieldBuilder] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [showVersions, setShowVersions] = useState(false);
-  const [editForm, setEditForm] = useState<any>(null);
-  const [activeForm, setActiveForm] = useState<any>(null);
+  const [editForm] = useState<FormDataRecord | null>(null);
+  const [activeForm, setActiveForm] = useState<FormDataRecord | null>(null);
   const [builderFields, setBuilderFields] = useState<FormField[]>([]);
-  const [versions, setVersions] = useState<any[]>([]);
+  const [versions, setVersions] = useState<VersionRecord[]>([]);
   const [openMenu, setOpenMenu] = useState<number | null>(null);
   const [copiedFormId, setCopiedFormId] = useState<number | null>(null);
 
   const [form, setForm] = useState({
     title: '', description: '', form_type: 'normal', status: 'draft', expires_at: '',
-    settings: {} as any
+    settings: {} as FormSettings
   });
 
   const fetchForms = async () => {
@@ -71,14 +106,14 @@ export default function Forms({ user }: { user: User }) {
   });
 
   // Helpers
-  const getFieldCount = (f: any) => {
+  const getFieldCount = (f: FormDataRecord) => {
     try {
       const schema = f.form_schema || f.schema;
       if (schema) {
         const parsed = typeof schema === 'string' ? JSON.parse(schema) : schema;
         if (parsed.sections) {
           let count = 0;
-          parsed.sections.forEach((s: any) => {
+          parsed.sections.forEach((s: { fields?: FormField[] }) => {
             count += (s.fields || []).length;
           });
           return count;
@@ -86,7 +121,7 @@ export default function Forms({ user }: { user: User }) {
       }
       const arr = typeof f.fields === 'string' ? JSON.parse(f.fields) : (f.fields || []);
       let count = 0;
-      const walk = (list: any[]) => list.forEach((x: any) => { count++; if (x.children) walk(x.children); });
+      const walk = (list: FormField[]) => list.forEach((x: FormField) => { count++; if (x.children) walk(x.children); });
       walk(arr);
       return count;
     } catch { return 0; }
@@ -97,7 +132,7 @@ export default function Forms({ user }: { user: User }) {
     navigate(`/forms/new?type=${type || 'normal'}`);
   };
 
-  const openEditModal = (row: any) => {
+  const openEditModal = (row: FormDataRecord) => {
     // Both edit and field builder now go to the same unified builder page
     navigate(`/forms/${row.id}/builder`);
   };
@@ -110,10 +145,10 @@ export default function Forms({ user }: { user: User }) {
       if (editForm) await api.put('/forms', { id: editForm.id, ...payload, change_notes: 'Updated', updated_by: user.id });
       else await api.post('/forms', payload);
       setShowCreate(false); fetchForms();
-    } catch (err: any) { alert(err.message); }
+    } catch (err) { alert((err as Error).message); }
   };
 
-  const openBuilder = (row: any) => {
+  const openBuilder = (row: FormDataRecord) => {
     navigate(`/forms/${row.id}/builder`);
   };
 
@@ -122,10 +157,10 @@ export default function Forms({ user }: { user: User }) {
     try {
       await api.put('/forms', { id: activeForm.id, fields: JSON.stringify(builderFields), change_notes: 'Fields updated', updated_by: user.id });
       setShowFieldBuilder(false); fetchForms();
-    } catch (err: any) { alert(err.message); }
+    } catch (err) { alert((err as Error).message); }
   };
 
-  const openPreviewModal = (row: any) => {
+  const openPreviewModal = (row: FormDataRecord) => {
     if (!row) return;
     setActiveForm(row);
     let f: FormField[] = [];
@@ -135,12 +170,12 @@ export default function Forms({ user }: { user: User }) {
         const parsed = typeof schema === 'string' ? JSON.parse(schema) : schema;
         if (parsed && parsed.sections) {
           // Map backend sections to FormRenderer sections
-          f = parsed.sections.map((s: any) => ({
+          f = parsed.sections.map((s: Record<string, unknown>) => ({
             id: s.id || Math.random().toString(36).substr(2, 9),
             type: 'section',
             label: s.title || s.label || 'Section',
             children: s.fields || [],
-            section_type: row.form_type || row.formType || 'normal'
+            section_type: String(row.form_type || row.formType || 'normal')
           }));
         }
       }
@@ -227,8 +262,6 @@ export default function Forms({ user }: { user: User }) {
               {t} <span className="ml-1 opacity-60">({
                 forms.filter(f => {
                   const isExpired = f.expires_at && new Date(f.expires_at) < new Date();
-                  let effectiveStatus = f.status;
-                  if (isExpired) effectiveStatus = t === 'expired' ? 'expired' : f.status; // Correctly count for the tab
                   
                   // Re-apply the same logic as the filter for consistency
                   let finalStatus = f.status;
@@ -541,7 +574,7 @@ export default function Forms({ user }: { user: User }) {
           <p className="text-xs text-amber-700 font-medium">👁 Preview — this is how users see the form.</p>
         </div>
         {builderFields.length > 0 ? (
-          <FormRenderer fields={builderFields} formType={(activeForm?.form_type || 'normal') as any}
+          <FormRenderer fields={builderFields} formType={(activeForm?.form_type || 'normal') as 'normal' | 'branching' | 'quiz' | 'nomination' | 'multi'}
             settings={(() => { try { return typeof activeForm?.settings === 'string' ? JSON.parse(activeForm.settings) : (activeForm?.settings || {}); } catch { return {}; } })()}
             onSubmit={() => alert('Preview mode — submission disabled')} />
         ) : <p className="text-center text-sm text-slate-500 py-10">No fields. Add fields first.</p>}
