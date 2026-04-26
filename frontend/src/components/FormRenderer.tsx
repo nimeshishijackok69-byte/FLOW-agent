@@ -276,10 +276,40 @@ export default function FormRenderer({ fields, formType, settings, initialValues
                   if (dis) return;
                   const input = document.createElement('input');
                   input.type = 'file';
-                  if (f.allowedFormats) input.accept = f.allowedFormats.map(fmt => `.${fmt.toLowerCase()}`).join(',');
+                  if (f.allowedFormats) {
+                    // Build accept string with both .ext forms and handle jpeg/jpg alias
+                    const formats = f.allowedFormats.flatMap(fmt => {
+                      const lower = fmt.toLowerCase();
+                      if (lower === 'jpg') return ['.jpg', '.jpeg'];
+                      if (lower === 'jpeg') return ['.jpeg', '.jpg'];
+                      return [`.${lower}`];
+                    });
+                    input.accept = [...new Set(formats)].join(',');
+                  }
                   input.onchange = async (e: any) => {
                     const file = e.target.files?.[0];
                     if (!file) return;
+
+                    // Client-side file size validation
+                    const maxMB = f.maxSizeMB || 10;
+                    if (file.size > maxMB * 1024 * 1024) {
+                      setErrors(p => ({ ...p, [f.id]: `File is too large. Maximum size is ${maxMB} MB.` }));
+                      return;
+                    }
+
+                    // Client-side extension validation
+                    if (f.allowedFormats && f.allowedFormats.length > 0) {
+                      const ext = file.name.split('.').pop()?.toLowerCase() || '';
+                      // Normalize: treat jpg and jpeg as interchangeable
+                      const normalizedAllowed = f.allowedFormats.map(fmt => fmt.toLowerCase());
+                      const isAllowed = normalizedAllowed.includes(ext) ||
+                        (ext === 'jpeg' && normalizedAllowed.includes('jpg')) ||
+                        (ext === 'jpg' && normalizedAllowed.includes('jpeg'));
+                      if (!isAllowed) {
+                        setErrors(p => ({ ...p, [f.id]: `File type .${ext} is not allowed. Allowed: ${f.allowedFormats!.join(', ').toUpperCase()}` }));
+                        return;
+                      }
+                    }
                     
                     const formData = new FormData();
                     formData.append('file', file);
@@ -295,13 +325,20 @@ export default function FormRenderer({ fields, formType, settings, initialValues
                         }
                       });
                       
-                      if (!res.ok) throw new Error('Upload failed');
+                      if (!res.ok) {
+                        let errMsg = 'Upload failed';
+                        try {
+                          const errData = await res.json();
+                          errMsg = errData.error || errMsg;
+                        } catch { /* ignore parse error */ }
+                        throw new Error(errMsg);
+                      }
                       const data = await res.json();
                       // Store the full Cloudinary URL so it can be used directly
                       set(f.id, data.url || data.filename);
                     } catch (err) {
                       console.error('File upload error:', err);
-                      setErrors(p => ({ ...p, [f.id]: 'File upload failed' }));
+                      setErrors(p => ({ ...p, [f.id]: (err as Error).message || 'File upload failed' }));
                     } finally {
                       setSubmitting(false);
                     }

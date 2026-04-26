@@ -1,8 +1,9 @@
 import express from 'express';
-import multer from 'multer';
+import multer, { MulterError } from 'multer';
 import { optionalAuthenticate } from '../middleware/auth.js';
 import cloudinary from '../config/cloudinary.js';
 import { Readable } from 'stream';
+import path from 'path';
 
 const router = express.Router();
 
@@ -19,18 +20,40 @@ function bufferToStream(buffer: Buffer): Readable {
   return readable;
 }
 
-router.post('/', optionalAuthenticate, upload.single('file'), async (req, res) => {
+router.post('/', optionalAuthenticate, (req, res, next) => {
+  // Wrap multer to catch MulterError (e.g. file too large) and return 400
+  upload.single('file')(req, res, (err) => {
+    if (err instanceof MulterError) {
+      if (err.code === 'LIMIT_FILE_SIZE') {
+        return res.status(400).json({ error: 'File is too large. Maximum upload size is 10 MB.' });
+      }
+      return res.status(400).json({ error: err.message });
+    }
+    if (err) {
+      return res.status(500).json({ error: 'File upload error' });
+    }
+    next();
+  });
+}, async (req, res) => {
   if (!req.file) {
     return res.status(400).json({ error: 'No file uploaded' });
   }
 
   try {
+    // Extract original filename and extension for Cloudinary
+    const originalName = req.file.originalname || 'upload';
+    const ext = path.extname(originalName).replace('.', '').toLowerCase();
+    const baseName = path.basename(originalName, path.extname(originalName))
+      .replace(/[^a-zA-Z0-9_-]/g, '_'); // sanitize
+
     // Upload buffer to Cloudinary via upload_stream
     const result: any = await new Promise((resolve, reject) => {
       const stream = cloudinary.uploader.upload_stream(
         {
           folder: 'flow-agent-uploads',
           resource_type: 'auto', // handles PDFs, images, etc.
+          public_id: `${baseName}_${Date.now()}`,
+          format: ext || undefined, // pass the original extension so Cloudinary knows the format
           use_filename: true,
           unique_filename: true,
         },
@@ -54,3 +77,4 @@ router.post('/', optionalAuthenticate, upload.single('file'), async (req, res) =
 });
 
 export default router;
+

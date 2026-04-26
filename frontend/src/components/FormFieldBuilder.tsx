@@ -22,7 +22,7 @@ export default function FormFieldBuilder({ fields, onChange, formType }: Props) 
     if (type==='mcq') { nf.correct='Option 1'; nf.points=10; }
     if (type==='section') { nf.show_when={field:'',equals:''}; nf.children=[]; }
     if (type==='rating') nf.max=5;
-    if (type==='file') { nf.allowedFormats=['pdf','jpg','png']; nf.maxSizeMB=5; }
+    if (type==='file') { nf.allowedFormats=['pdf','jpg','jpeg','png']; nf.maxSizeMB=5; }
     onChange([...fields, nf]); setExp(id);
   };
 
@@ -53,7 +53,7 @@ export default function FormFieldBuilder({ fields, onChange, formType }: Props) 
     const nf:FormField = {id, type:type as any, label:`New ${TYPES.find(t=>t.v===type)?.l||'Field'}`, required:false};
     if(['select','radio','checkbox','mcq'].includes(type)) nf.options=['Option 1','Option 2'];
     if(type==='mcq'){nf.correct='Option 1';nf.points=10;}
-    if(type==='file'){nf.allowedFormats=['pdf','jpg'];nf.maxSizeMB=5;}
+    if(type==='file'){nf.allowedFormats=['pdf','jpg','jpeg','png'];nf.maxSizeMB=5;}
     onChange(fields.map(f=>f.id===pid?{...f,children:[...(f.children||[]),nf]}:f));
   };
 
