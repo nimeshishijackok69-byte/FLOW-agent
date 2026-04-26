@@ -538,6 +538,39 @@ function FieldRenderer({ f, value, onChange, shuffle }: { f: Field; value: unkno
     return f.options;
   }, [f.options, shuffle]);
 
+  // File upload state (always declared — rules of hooks)
+  const [uploading, setUploading] = useState(false);
+  const [uploadErr, setUploadErr] = useState('');
+
+  const handleFileUpload = async (file: File) => {
+    if (!file) return;
+    if (f.maxSizeMB && file.size > f.maxSizeMB * 1024 * 1024) {
+      setUploadErr(`File too large. Max ${f.maxSizeMB}MB allowed.`);
+      return;
+    }
+    setUploading(true);
+    setUploadErr('');
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const uploadUrl = (import.meta.env.VITE_API_URL || 'http://127.0.0.1:5001/api/v1') + '/uploads';
+      const res = await fetch(uploadUrl, {
+        method: 'POST',
+        body: formData,
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+        }
+      });
+      if (!res.ok) throw new Error('Upload failed');
+      const data = await res.json();
+      onChange(data.url || data.filename || file.name);
+    } catch (err: any) {
+      console.error('File upload error:', err);
+      setUploadErr(err.message || 'Upload failed. Please try again.');
+    } finally {
+      setUploading(false);
+    }
+  };
   return (
     <div>
       <label className="text-sm font-semibold text-ink">{f.label}{f.required && <span className="text-rose-500"> *</span>}</label>
@@ -596,16 +629,45 @@ function FieldRenderer({ f, value, onChange, shuffle }: { f: Field; value: unkno
                 })}
               </div>
             );
-          case 'file':
+          case 'file': {
+            const fileVal = value ? String(value) : '';
             return (
-              <label className="mt-2 block rounded-xl border-2 border-dashed border-border p-6 text-center cursor-pointer hover:border-blue hover:bg-blue-soft transition-colors">
-                <Upload className="mx-auto text-muted" size={22}/>
-                <div className="text-sm font-medium mt-2">{value ? String(value) : 'Click or drop file'}</div>
-                <div className="text-xs text-muted mt-1">{f.fileTypes ? `Types: ${f.fileTypes}` : ''} {f.maxSizeMB ? `· Max ${f.maxSizeMB}MB` : ''}</div>
-                <input type="file" className="hidden" accept={f.fileTypes ? f.fileTypes.split(',').map(x => `.${x.trim()}`).join(',') : undefined}
-                  onChange={e => onChange(e.target.files?.[0]?.name || '')} />
-              </label>
+              <div className="mt-2">
+                {fileVal ? (
+                  <div className="flex items-center gap-2 p-3 bg-blue-soft rounded-xl border border-blue/30">
+                    <Upload size={16} className="text-blue flex-shrink-0" />
+                    <span className="text-sm flex-1 truncate font-medium">{fileVal.startsWith('http') ? fileVal.split('/').pop() : fileVal}</span>
+                    {fileVal.startsWith('http') && (
+                      <a href={fileVal} target="_blank" rel="noopener noreferrer" className="text-xs text-blue font-bold hover:underline">View</a>
+                    )}
+                    <button type="button" onClick={() => onChange('')} className="text-xs text-rose-500 font-bold hover:underline">Remove</button>
+                  </div>
+                ) : (
+                  <label className="block rounded-xl border-2 border-dashed border-border p-6 text-center cursor-pointer hover:border-blue hover:bg-blue-soft transition-colors">
+                    {uploading ? (
+                      <>
+                        <div className="w-6 h-6 border-2 border-blue border-t-transparent rounded-full animate-spin mx-auto" />
+                        <div className="text-sm font-medium mt-2 text-blue">Uploading…</div>
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="mx-auto text-muted" size={22}/>
+                        <div className="text-sm font-medium mt-2">Click or drop file</div>
+                        <div className="text-xs text-muted mt-1">{f.fileTypes ? `Types: ${f.fileTypes}` : ''} {f.maxSizeMB ? `· Max ${f.maxSizeMB}MB` : ''}</div>
+                      </>
+                    )}
+                    <input type="file" className="hidden" disabled={uploading}
+                      accept={f.fileTypes ? f.fileTypes.split(',').map(x => `.${x.trim()}`).join(',') : undefined}
+                      onChange={e => {
+                        const file = e.target.files?.[0];
+                        if (file) handleFileUpload(file);
+                      }} />
+                  </label>
+                )}
+                {uploadErr && <p className="text-xs text-rose-500 mt-1 font-medium">{uploadErr}</p>}
+              </div>
             );
+          }
           default:
             return <input className="input mt-2" placeholder={f.placeholder} maxLength={f.maxLength}
               value={String(value || '')} onChange={e => onChange(e.target.value)} />;
