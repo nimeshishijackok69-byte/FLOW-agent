@@ -8,7 +8,7 @@ import { authenticate, authorize } from '../middleware/auth.js';
 
 const router = express.Router();
 
-router.use(authenticate);
+router.use(['/review-levels', '/shortlist', '/reviews', '/review-scores'], authenticate);
 
 // Levels
 router.get('/review-levels', getLevels);
