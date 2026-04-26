@@ -579,7 +579,11 @@ function FieldRenderer({ f, value, onChange, shuffle }: { f: Field; value: unkno
         body: formData,
         headers: (() => {
           const t = localStorage.getItem('auth_token');
-          return (t && t !== 'null' && t !== 'undefined') ? { 'Authorization': `Bearer ${t}` } : {};
+          const h: Record<string, string> = {};
+          if (t && t !== 'null' && t !== 'undefined') {
+            h['Authorization'] = `Bearer ${t}`;
+          }
+          return h;
         })()
       });
       if (!res.ok) {
