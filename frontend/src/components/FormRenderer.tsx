@@ -320,9 +320,10 @@ export default function FormRenderer({ fields, formType, settings, initialValues
                       const res = await fetch(uploadUrl, {
                         method: 'POST',
                         body: formData,
-                        headers: {
-                          ...(localStorage.getItem('auth_token') ? { 'Authorization': `Bearer ${localStorage.getItem('auth_token')}` } : {})
-                        }
+                        headers: (() => {
+                          const t = localStorage.getItem('auth_token');
+                          return (t && t !== 'null' && t !== 'undefined') ? { 'Authorization': `Bearer ${t}` } : {};
+                        })()
                       });
                       
                       if (!res.ok) {
