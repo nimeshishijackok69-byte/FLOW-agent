@@ -3,10 +3,26 @@ import { Submission } from '../models/Submission.js';
 import { Form } from '../models/Form.js';
 import { AuthRequest } from '../middleware/auth.js';
 
+const normalizeSubmissionState = (body: Record<string, any>) => {
+  const isDraft = body.is_draft === true || body.isDraft === true;
+  if (isDraft) {
+    return { isDraft: true, status: 'draft' };
+  }
+
+  const requestedStatus = typeof body.status === 'string' ? body.status : '';
+  const allowedStatuses = new Set(['pending', 'submitted', 'under_review', 'approved', 'rejected']);
+
+  return {
+    isDraft: false,
+    status: allowedStatuses.has(requestedStatus) ? requestedStatus : 'pending',
+  };
+};
+
 export const submitForm = async (req: AuthRequest, res: Response) => {
   try {
     let { form_id, formId, responses } = req.body;
     const actualFormId = form_id || formId || req.body.formId;
+    const submissionState = normalizeSubmissionState(req.body);
     
     // Convert object responses to array if needed
     if (responses && !Array.isArray(responses)) {
@@ -95,8 +111,8 @@ export const submitForm = async (req: AuthRequest, res: Response) => {
       formTitle: req.body.form_title || form.title,
       responses,
       score,
-      status: req.body.status || 'pending',
-      isDraft: req.body.is_draft || false,
+      status: submissionState.status,
+      isDraft: submissionState.isDraft,
       metadata: {
         ip: req.ip,
         userAgent: req.headers['user-agent']
@@ -112,6 +128,7 @@ export const submitForm = async (req: AuthRequest, res: Response) => {
 export const updateSubmission = async (req: AuthRequest, res: Response) => {
   try {
     let { id, is_draft, responses } = req.body;
+    const submissionState = normalizeSubmissionState(req.body);
     
     if (responses && !Array.isArray(responses)) {
       responses = Object.entries(responses).map(([fieldId, value]) => ({ fieldId, value }));
@@ -120,7 +137,8 @@ export const updateSubmission = async (req: AuthRequest, res: Response) => {
     const submission = await Submission.findByIdAndUpdate(id, {
       ...req.body,
       responses: responses || req.body.responses,
-      isDraft: is_draft !== undefined ? is_draft : req.body.isDraft
+      isDraft: is_draft !== undefined ? is_draft : submissionState.isDraft,
+      status: submissionState.status,
     }, { new: true });
     if (!submission) return res.status(404).json({ error: 'Submission not found' });
     res.status(200).json({ ...submission.toObject(), id: submission._id, is_draft: submission.isDraft });

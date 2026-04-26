@@ -286,7 +286,7 @@ export default function FormFill({ user }: { user: User }) {
     setSaving(true);
     try {
       const payload = { 
-      form_id: form._id || form.id, responses: answers, status: 'draft', is_draft: true,
+      form_id: form._id || form.id, responses: answers, is_draft: true,
       user_email: user.id === 'anon' ? email : user.email,
       user_name: user.id === 'anon' ? (email.split('@')[0]) : user.name,
       school_code: schoolCode || (user.id !== 'anon' ? user.school_code : '')
@@ -489,6 +489,7 @@ export default function FormFill({ user }: { user: User }) {
                 value={answers[f.id]}
                 onChange={v => setAnswers(a => ({ ...a, [f.id]: v }))}
                 shuffle={!!form.settings.shuffle && (form.form_type === 'quiz' || form.form_type === 'multi') && f.type === 'mcq'}
+                isAnonymous={isAnon}
               />
             </div>
           ))}
@@ -532,7 +533,7 @@ export default function FormFill({ user }: { user: User }) {
 }
 
 // ─── Field Renderer ───────────────────────────────────────────────────────────
-function FieldRenderer({ f, value, onChange, shuffle }: { f: Field; value: unknown; onChange: (v: unknown) => void; shuffle?: boolean }) {
+function FieldRenderer({ f, value, onChange, shuffle, isAnonymous = false }: { f: Field; value: unknown; onChange: (v: unknown) => void; shuffle?: boolean; isAnonymous?: boolean }) {
   const opts = useMemo(() => {
     if (!f.options) return [];
     if (shuffle) return [...f.options].sort(() => Math.random() - 0.5);
@@ -580,7 +581,7 @@ function FieldRenderer({ f, value, onChange, shuffle }: { f: Field; value: unkno
         headers: (() => {
           const t = localStorage.getItem('auth_token');
           const h: Record<string, string> = {};
-          if (t && t !== 'null' && t !== 'undefined') {
+          if (!isAnonymous && t && t !== 'null' && t !== 'undefined') {
             h['Authorization'] = `Bearer ${t}`;
           }
           return h;

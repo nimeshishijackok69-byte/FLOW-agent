@@ -1,6 +1,5 @@
 import express from 'express';
 import multer, { MulterError } from 'multer';
-import { optionalAuthenticate } from '../middleware/auth.js';
 import cloudinary from '../config/cloudinary.js';
 import { Readable } from 'stream';
 import path from 'path';
@@ -20,7 +19,7 @@ function bufferToStream(buffer: Buffer): Readable {
   return readable;
 }
 
-router.post('/', optionalAuthenticate, (req, res, next) => {
+router.post('/', (req, res, next) => {
   // Wrap multer to catch MulterError (e.g. file too large) and return 400
   upload.single('file')(req, res, (err) => {
     if (err instanceof MulterError) {
