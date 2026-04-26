@@ -52,7 +52,13 @@ export default function Layout({ user, onLogout, children }: { user: User; onLog
   const location = useLocation();
   const nav = getNav(user.role);
 
-  useEffect(() => { api.get(`/notifications?user_id=${user.id}`).then(setNotifications).catch(() => {}); }, [user.id]);
+  useEffect(() => {
+    if (!user?.id || user.id === 'anon') {
+      setNotifications([]);
+      return;
+    }
+    api.get(`/notifications?user_id=${user.id}`).then(setNotifications).catch(() => {});
+  }, [user?.id]);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -88,7 +94,11 @@ export default function Layout({ user, onLogout, children }: { user: User; onLog
   };
 
   const unreadCount = notifications.filter(n => !n.is_read).length;
-  const markAllRead = async () => { await api.put('/notifications', { id: 'all', user_id: user.id, is_read: true }).catch(() => {}); setNotifications(prev => prev.map(n => ({ ...n, is_read: true }))); };
+  const markAllRead = async () => {
+    if (!user?.id || user.id === 'anon') return;
+    await api.put('/notifications', { id: 'all', user_id: user.id, is_read: true }).catch(() => {});
+    setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
+  };
   const breadcrumbs = location.pathname.split('/').filter(Boolean);
   const schoolCode = user.school_code || (user.email?.match(/^head\.([a-z0-9]+)@/i)?.[1]?.toUpperCase());
 

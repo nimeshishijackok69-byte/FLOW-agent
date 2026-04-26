@@ -64,7 +64,7 @@ function AppContent() {
         {user?.role === 'admin' && <Route path="/audit-logs" element={<AuditLogs />} />}
         {user?.role === 'admin' && <Route path="/exports" element={<Exports />} />}
         <Route path="/profile" element={user ? <Profile user={user} /> : <Navigate to="/login" />} />
-        <Route path="/login" element={<Login onLogin={refreshUser} />} />
+        <Route path="/login" element={user ? <Navigate to="/" replace /> : <Login onLogin={refreshUser} />} />
         <Route path="*" element={<Navigate to={user ? "/" : "/login"} replace />} />
       </Routes>
     </Layout>
